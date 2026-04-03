@@ -1,0 +1,25 @@
+{
+  "name": "dream-backend",
+  "version": "1.0.0",
+  "description": "Dream direct ordering API",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "dream",
+    "express",
+    "ordering"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "author": ""
+}

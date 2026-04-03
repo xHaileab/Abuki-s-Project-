@@ -1,0 +1,56 @@
+{
+  "ads": [
+    {
+      "id": "ad-1",
+      "title": "Rophnan Sidest Concert",
+      "subtitle": "Millennium Hall | Bole, Addis Ababa",
+      "tag": "Concert",
+      "imageUrl": "/static/images/design_ad.jpg"
+    },
+    {
+      "id": "ad-2",
+      "title": "Weekend Family Combo",
+      "subtitle": "Order now and save 15%",
+      "tag": "Hot Deal",
+      "imageUrl": "/static/images/design_ad.jpg"
+    },
+    {
+      "id": "ad-3",
+      "title": "Fast Lunch Delivery",
+      "subtitle": "Ready in under 25 minutes",
+      "tag": "Nearby",
+      "imageUrl": "/static/images/design_ad.jpg"
+    }
+  ],
+  "products": [
+    {
+      "id": "prd-onion",
+      "name": "Onion",
+      "price": 50,
+      "imageUrl": null
+    },
+    {
+      "id": "prd-tomato",
+      "name": "Tomato",
+      "price": 80,
+      "imageUrl": null
+    },
+    {
+      "id": "prd-chili",
+      "name": "Chili",
+      "price": 120,
+      "imageUrl": null
+    },
+    {
+      "id": "prd-potato",
+      "name": "Potato",
+      "price": 65,
+      "imageUrl": null
+    }
+  ],
+  "config": {
+    "adminPhone": "+251911223344",
+    "paymentInstructions": "1) Send payment to Telebirr 0911 22 33 44. 2) Keep your transaction reference. 3) Call admin with your Order ID for confirmation and dispatch."
+  },
+  "orders": []
+}
