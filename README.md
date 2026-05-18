@@ -68,7 +68,7 @@ flutter run -d chrome --dart-define=BACKEND_URL=http://localhost:4000
 
 - Token-based sign-in
 - Orders table with status pill + one-click status advancement
-- Map view (Leaflet) plotting located orders. Tile source defaults to OpenStreetMap; set `VITE_GEBETA_TILE_URL` to use Gebeta tiles
+- Map view (MapLibre GL JS) plotting located orders. Defaults to Gebeta's standard style when `VITE_GEBETA_API_KEY` is set; falls back to OpenStreetMap raster tiles otherwise
 - Products / Ads / Config CRUD pages
 
 ## Deployment to Railway
@@ -82,7 +82,9 @@ Two services per repo: `backend` and `admin`. Both have a `railway.json` configu
    - Attach a persistent volume mounted at `/data` to keep SQLite across deploys
 3. **Admin service**
    - Root directory: `admin`
-   - Environment var: `VITE_BACKEND_URL=https://<your-backend>.up.railway.app`
+   - Environment vars:
+     - `VITE_BACKEND_URL=https://<your-backend>.up.railway.app`
+     - `VITE_GEBETA_API_KEY=<your-gebeta-key>` (so the admin map renders with Gebeta tiles)
 4. **Flutter app**
    - Build the APK with the backend URL baked in: `flutter build apk --release --dart-define=BACKEND_URL=https://<your-backend>.up.railway.app`
 
@@ -92,4 +94,5 @@ The backend uses the [Gebeta](https://docs.gebeta.app/) forward geocoding endpoi
 
 - Forward geocoding: `GET https://mapapi.gebeta.app/api/v1/route/geocoding?name=...&apiKey=...`
 - Directions / routing primitives also live under `https://mapapi.gebeta.app/api/route/...`
-- See `backend/src/gebeta.js` for the wrapper.
+- Map tiles: MapLibre style URL `https://tiles.gebeta.app/styles/standard/style.json`, with `apiKey` injected on every request via MapLibre's `transformRequest`
+- See `backend/src/gebeta.js` (server-side geocoding) and `admin/src/components/OrderMap.jsx` (client-side tiles).

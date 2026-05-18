@@ -16,8 +16,7 @@ body {
   color: #0A3534;
 }
 
-/* Leaflet sometimes ships z-index conflicts with overlays. */
-.leaflet-container {
+/* MapLibre takes over its container; keep its popups in our type family. */
+.maplibregl-popup-content {
   font-family: inherit;
-  z-index: 1;
 }
