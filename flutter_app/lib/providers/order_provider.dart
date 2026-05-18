@@ -100,7 +100,12 @@ class OrderProvider extends ChangeNotifier {
 
   bool get hasSelectedItems => selectedLines.isNotEmpty;
 
-  Future<OrderReceipt?> submitOrder() async {
+  Future<OrderReceipt?> submitOrder({
+    String? customerName,
+    String? customerPhone,
+    String? address,
+    String? addressNote,
+  }) async {
     if (!hasSelectedItems) {
       _errorMessage = 'Please select at least one item.';
       notifyListeners();
@@ -115,6 +120,10 @@ class OrderProvider extends ChangeNotifier {
       final receipt = await _apiService.createOrder(
         items: selectedLines,
         total: total,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        address: address,
+        addressNote: addressNote,
       );
       return receipt;
     } catch (e) {

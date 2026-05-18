@@ -1,48 +1,402 @@
-const fs = require('node:fs/promises');
+/**
+ * SQLite-backed data store for Dream.
+ *
+ * Replaces the previous JSON-file store. Schema mirrors the original JSON
+ * shape so the public API contract remains stable, but adds:
+ *   - Per-row CRUD (lets the admin web app manage products/ads/config)
+ *   - Order delivery fields (address, lat, lon) for Gebeta map plotting
+ *   - Order status transitions (submitted → confirmed → dispatched → delivered)
+ *
+ * Concurrency: better-sqlite3 is synchronous, so multiple Express request
+ * handlers serialize naturally inside the Node event loop. No file-rewrite
+ * race like the previous JSON store had.
+ */
+
+const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
+const Database = require('better-sqlite3');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const DB_PATH = path.join(DATA_DIR, 'db.json');
+const DB_PATH = process.env.DREAM_DB_PATH || path.join(DATA_DIR, 'dream.db');
 const SEED_PATH = path.join(DATA_DIR, 'seed.json');
 
-async function ensureDb() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
+const db = new Database(DB_PATH);
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS products (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL,
+    image_url TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS ads (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    tag TEXT,
+    image_url TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'submitted',
+    total REAL NOT NULL,
+    customer_name TEXT,
+    customer_phone TEXT,
+    address TEXT,
+    address_note TEXT,
+    lat REAL,
+    lon REAL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    price REAL NOT NULL,
+    quantity INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+`);
+
+// One-time seed from seed.json if every table is empty (fresh install).
+function seedIfEmpty() {
+  const counts = db
+    .prepare(
+      `SELECT
+        (SELECT COUNT(*) FROM products) AS products,
+        (SELECT COUNT(*) FROM ads) AS ads,
+        (SELECT COUNT(*) FROM config) AS config`
+    )
+    .get();
+  const empty =
+    counts.products === 0 && counts.ads === 0 && counts.config === 0;
+  if (!empty) return;
+
+  let seed;
   try {
-    await fs.access(DB_PATH);
+    seed = JSON.parse(fs.readFileSync(SEED_PATH, 'utf8'));
   } catch (_) {
-    const seed = await fs.readFile(SEED_PATH, 'utf8');
-    await fs.writeFile(DB_PATH, seed, 'utf8');
+    return;
   }
+
+  const insertProduct = db.prepare(
+    `INSERT INTO products (id, name, price, image_url, sort_order)
+     VALUES (@id, @name, @price, @imageUrl, @sortOrder)`
+  );
+  const insertAd = db.prepare(
+    `INSERT INTO ads (id, title, subtitle, tag, image_url, sort_order)
+     VALUES (@id, @title, @subtitle, @tag, @imageUrl, @sortOrder)`
+  );
+  const insertConfig = db.prepare(
+    `INSERT INTO config (key, value) VALUES (?, ?)`
+  );
+
+  const tx = db.transaction(() => {
+    (seed.products || []).forEach((p, i) =>
+      insertProduct.run({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price),
+        imageUrl: p.imageUrl || null,
+        sortOrder: i,
+      })
+    );
+    (seed.ads || []).forEach((a, i) =>
+      insertAd.run({
+        id: a.id,
+        title: a.title,
+        subtitle: a.subtitle || '',
+        tag: a.tag || null,
+        imageUrl: a.imageUrl || null,
+        sortOrder: i,
+      })
+    );
+    const cfg = seed.config || {};
+    Object.entries(cfg).forEach(([k, v]) => insertConfig.run(k, String(v)));
+  });
+
+  tx();
 }
 
-async function readDb() {
-  await ensureDb();
-  const raw = await fs.readFile(DB_PATH, 'utf8');
-  const parsed = JSON.parse(raw);
+seedIfEmpty();
 
+// ── Products ────────────────────────────────────────────────────────────
+function listProducts() {
+  return db
+    .prepare(
+      `SELECT id, name, price, image_url AS imageUrl, sort_order AS sortOrder
+       FROM products ORDER BY sort_order, name`
+    )
+    .all();
+}
+
+function createProduct({ name, price, imageUrl = null }) {
+  const id = `prd-${crypto.randomUUID().slice(0, 8)}`;
+  const sortOrder =
+    db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM products`).get().next;
+  db.prepare(
+    `INSERT INTO products (id, name, price, image_url, sort_order)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(id, name, Number(price), imageUrl, sortOrder);
+  return getProduct(id);
+}
+
+function getProduct(id) {
+  return db
+    .prepare(
+      `SELECT id, name, price, image_url AS imageUrl, sort_order AS sortOrder
+       FROM products WHERE id = ?`
+    )
+    .get(id);
+}
+
+function updateProduct(id, { name, price, imageUrl }) {
+  const existing = getProduct(id);
+  if (!existing) return null;
+  db.prepare(
+    `UPDATE products
+     SET name = COALESCE(?, name),
+         price = COALESCE(?, price),
+         image_url = COALESCE(?, image_url)
+     WHERE id = ?`
+  ).run(
+    name ?? null,
+    price !== undefined ? Number(price) : null,
+    imageUrl !== undefined ? imageUrl : null,
+    id
+  );
+  return getProduct(id);
+}
+
+function deleteProduct(id) {
+  return db.prepare(`DELETE FROM products WHERE id = ?`).run(id).changes > 0;
+}
+
+// ── Ads ─────────────────────────────────────────────────────────────────
+function listAds() {
+  return db
+    .prepare(
+      `SELECT id, title, subtitle, tag, image_url AS imageUrl, sort_order AS sortOrder
+       FROM ads ORDER BY sort_order, created_at`
+    )
+    .all();
+}
+
+function createAd({ title, subtitle = '', tag = null, imageUrl = null }) {
+  const id = `ad-${crypto.randomUUID().slice(0, 8)}`;
+  const sortOrder =
+    db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM ads`).get().next;
+  db.prepare(
+    `INSERT INTO ads (id, title, subtitle, tag, image_url, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(id, title, subtitle, tag, imageUrl, sortOrder);
+  return getAd(id);
+}
+
+function getAd(id) {
+  return db
+    .prepare(
+      `SELECT id, title, subtitle, tag, image_url AS imageUrl, sort_order AS sortOrder
+       FROM ads WHERE id = ?`
+    )
+    .get(id);
+}
+
+function updateAd(id, { title, subtitle, tag, imageUrl }) {
+  const existing = getAd(id);
+  if (!existing) return null;
+  db.prepare(
+    `UPDATE ads
+     SET title = COALESCE(?, title),
+         subtitle = COALESCE(?, subtitle),
+         tag = COALESCE(?, tag),
+         image_url = COALESCE(?, image_url)
+     WHERE id = ?`
+  ).run(title ?? null, subtitle ?? null, tag ?? null, imageUrl ?? null, id);
+  return getAd(id);
+}
+
+function deleteAd(id) {
+  return db.prepare(`DELETE FROM ads WHERE id = ?`).run(id).changes > 0;
+}
+
+// ── Config ──────────────────────────────────────────────────────────────
+function getConfig() {
+  const rows = db.prepare(`SELECT key, value FROM config`).all();
+  const out = {};
+  rows.forEach((r) => (out[r.key] = r.value));
+  return out;
+}
+
+function updateConfig(patch) {
+  const stmt = db.prepare(
+    `INSERT INTO config (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  );
+  const tx = db.transaction((entries) => {
+    entries.forEach(([k, v]) => stmt.run(k, String(v ?? '')));
+  });
+  tx(Object.entries(patch));
+  return getConfig();
+}
+
+// ── Orders ──────────────────────────────────────────────────────────────
+function listOrders({ status = null } = {}) {
+  const rows = status
+    ? db
+        .prepare(
+          `SELECT * FROM orders WHERE status = ? ORDER BY created_at DESC`
+        )
+        .all(status)
+    : db.prepare(`SELECT * FROM orders ORDER BY created_at DESC`).all();
+
+  const itemsStmt = db.prepare(
+    `SELECT product_id AS productId, name, price, quantity
+     FROM order_items WHERE order_id = ?`
+  );
+
+  return rows.map((r) => ({
+    id: r.id,
+    status: r.status,
+    total: r.total,
+    customerName: r.customer_name,
+    customerPhone: r.customer_phone,
+    address: r.address,
+    addressNote: r.address_note,
+    lat: r.lat,
+    lon: r.lon,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    items: itemsStmt.all(r.id),
+  }));
+}
+
+function getOrder(id) {
+  const r = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(id);
+  if (!r) return null;
+  const items = db
+    .prepare(
+      `SELECT product_id AS productId, name, price, quantity
+       FROM order_items WHERE order_id = ?`
+    )
+    .all(id);
   return {
-    ads: Array.isArray(parsed.ads) ? parsed.ads : [],
-    products: Array.isArray(parsed.products) ? parsed.products : [],
-    config:
-      typeof parsed.config === 'object' && parsed.config !== null
-        ? parsed.config
-        : {
-            adminPhone: '',
-            paymentInstructions: '',
-          },
-    orders: Array.isArray(parsed.orders) ? parsed.orders : [],
+    id: r.id,
+    status: r.status,
+    total: r.total,
+    customerName: r.customer_name,
+    customerPhone: r.customer_phone,
+    address: r.address,
+    addressNote: r.address_note,
+    lat: r.lat,
+    lon: r.lon,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    items,
   };
 }
 
-async function writeDb(data) {
-  await ensureDb();
-  const tempPath = `${DB_PATH}.tmp`;
-  await fs.writeFile(tempPath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
-  await fs.rename(tempPath, DB_PATH);
+function createOrder({
+  items,
+  total,
+  customerName = null,
+  customerPhone = null,
+  address = null,
+  addressNote = null,
+  lat = null,
+  lon = null,
+}) {
+  const id = `ORD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const createdAt = new Date().toISOString();
+
+  const insertOrder = db.prepare(
+    `INSERT INTO orders
+     (id, status, total, customer_name, customer_phone, address, address_note, lat, lon, created_at, updated_at)
+     VALUES (?, 'submitted', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const insertItem = db.prepare(
+    `INSERT INTO order_items (order_id, product_id, name, price, quantity)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+
+  const tx = db.transaction(() => {
+    insertOrder.run(
+      id,
+      total,
+      customerName,
+      customerPhone,
+      address,
+      addressNote,
+      lat,
+      lon,
+      createdAt,
+      createdAt
+    );
+    items.forEach((it) =>
+      insertItem.run(id, it.productId, it.name, it.price, it.quantity)
+    );
+  });
+  tx();
+  return getOrder(id);
+}
+
+const VALID_STATUSES = new Set([
+  'submitted',
+  'confirmed',
+  'dispatched',
+  'delivered',
+  'cancelled',
+]);
+
+function updateOrderStatus(id, status) {
+  if (!VALID_STATUSES.has(status)) {
+    throw new Error(`Invalid status: ${status}`);
+  }
+  const updatedAt = new Date().toISOString();
+  const changes = db
+    .prepare(`UPDATE orders SET status = ?, updated_at = ? WHERE id = ?`)
+    .run(status, updatedAt, id).changes;
+  return changes > 0 ? getOrder(id) : null;
 }
 
 module.exports = {
-  readDb,
-  writeDb,
+  db,
+  listProducts,
+  createProduct,
+  getProduct,
+  updateProduct,
+  deleteProduct,
+  listAds,
+  createAd,
+  getAd,
+  updateAd,
+  deleteAd,
+  getConfig,
+  updateConfig,
+  listOrders,
+  getOrder,
+  createOrder,
+  updateOrderStatus,
+  VALID_STATUSES,
 };

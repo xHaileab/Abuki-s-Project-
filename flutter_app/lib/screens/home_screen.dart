@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/order_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/ad_carousel.dart';
+import '../widgets/delivery_sheet.dart';
+import '../widgets/glass_container.dart';
 import '../widgets/product_row.dart';
+import '../widgets/top_bar.dart';
 import 'checkout_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -11,150 +15,200 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = DreamPaletteScope.of(context);
+
     return Scaffold(
       body: Stack(
         children: <Widget>[
-          Positioned(
-            right: -35,
-            top: 30,
-            bottom: 0,
-            child: Opacity(
-              opacity: 0.26,
-              child: Image.asset('assets/images/motif.jpg'),
+          // Ambient motif: tinted + soft-light blended so it reads as
+          // texture rather than a foreground image. Mode-aware.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: palette.motifOpacity,
+                child: ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    palette.motifTint,
+                    palette.motifBlendMode,
+                  ),
+                  child: Image.asset(
+                    'assets/images/motif.jpg',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topRight,
+                  ),
+                ),
+              ),
             ),
           ),
           SafeArea(
-            child: Consumer<OrderProvider>(
-              builder: (context, provider, _) {
-                if (provider.isLoading && provider.products.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            child: Column(
+              children: <Widget>[
+                const TopBar(),
+                Expanded(
+                  child: Consumer<OrderProvider>(
+                    builder: (context, provider, _) {
+                      if (provider.isLoading && provider.products.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
 
-                return RefreshIndicator(
-                  onRefresh: provider.loadInitialData,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
-                    children: <Widget>[
-                      const SizedBox(height: 4),
-                      AdCarousel(ads: provider.ads),
-                      const SizedBox(height: 18),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              const Row(
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.shopping_basket_outlined,
-                                    color: Color(0xFF0B7B78),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Order Details',
-                                    style: TextStyle(
-                                      fontSize: 31,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF0D6866),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-                              if (provider.errorMessage != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Text(
-                                    provider.errorMessage!,
-                                    style: const TextStyle(
-                                      color: Colors.redAccent,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ...provider.products.map(
-                                (product) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: ProductRow(
-                                    product: product,
-                                    quantity: provider.quantityFor(product.id),
-                                    onDecrement: () =>
-                                        provider.decrement(product.id),
-                                    onIncrement: () =>
-                                        provider.increment(product.id),
-                                  ),
-                                ),
-                              ),
-                              const Divider(height: 28),
-                              Row(
-                                children: <Widget>[
-                                  const Expanded(
-                                    child: Text(
-                                      'Total Amount',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  Flexible(
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        '${provider.total.toStringAsFixed(2)} ETB',
-                                        style: const TextStyle(
-                                          fontSize: 32,
-                                          color: Color(0xFF0A3534),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                      return RefreshIndicator(
+                        onRefresh: provider.loadInitialData,
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(18, 4, 18, 24),
+                          children: <Widget>[
+                            AdCarousel(ads: provider.ads),
+                            const SizedBox(height: 14),
+                            _OrderDetailsCard(provider: provider),
+                            const SizedBox(height: 14),
+                            _BuyButton(provider: provider),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: 58,
-                        child: ElevatedButton(
-                          onPressed: provider.isSubmitting
-                              ? null
-                              : () => _onBuyNow(context, provider),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF9800),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          child: provider.isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Buy Now'),
-                        ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _OrderDetailsCard extends StatelessWidget {
+  const _OrderDetailsCard({required this.provider});
+
+  final OrderProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DreamPaletteScope.of(context);
+    return GlassContainer(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      borderRadius: 20,
+      blurSigma: 18,
+      fillOverride: palette.cardFill,
+      borderOverride: palette.cardBorder,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                Icons.shopping_basket_outlined,
+                size: 18,
+                color: palette.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Order Details',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: palette.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (provider.errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                provider.errorMessage!,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ...provider.products.map(
+            (product) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ProductRow(
+                product: product,
+                quantity: provider.quantityFor(product.id),
+                onDecrement: () => provider.decrement(product.id),
+                onIncrement: () => provider.increment(product.id),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            height: 1,
+            color: palette.glassBorder,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  'Total',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: palette.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '${provider.total.toStringAsFixed(0)} ETB',
+                    style: TextStyle(
+                      fontSize: 22,
+                      color: palette.totalText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BuyButton extends StatelessWidget {
+  const _BuyButton({required this.provider});
+
+  final OrderProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: ElevatedButton(
+        onPressed: provider.isSubmitting
+            ? null
+            : () => _onBuyNow(context, provider),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF9800),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        child: provider.isSubmitting
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Text('Buy Now'),
       ),
     );
   }
@@ -178,7 +232,16 @@ class HomeScreen extends StatelessWidget {
       return;
     }
 
-    final receipt = await provider.submitOrder();
+    final details = await showDeliverySheet(context);
+    if (details == null) return;
+    if (!context.mounted) return;
+
+    final receipt = await provider.submitOrder(
+      customerName: details.name,
+      customerPhone: details.phone,
+      address: details.address,
+      addressNote: details.note,
+    );
     if (!context.mounted || receipt == null) {
       if (provider.errorMessage != null && context.mounted) {
         ScaffoldMessenger.of(

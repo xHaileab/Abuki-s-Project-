@@ -44,14 +44,30 @@ class ApiService {
   Future<OrderReceipt> createOrder({
     required List<OrderLine> items,
     required double total,
+    String? customerName,
+    String? customerPhone,
+    String? address,
+    String? addressNote,
   }) async {
+    final body = <String, dynamic>{
+      'items': items.map((e) => e.toJson()).toList(),
+      'total': total,
+    };
+    if (customerName != null && customerName.isNotEmpty) {
+      body['customerName'] = customerName;
+    }
+    if (customerPhone != null && customerPhone.isNotEmpty) {
+      body['customerPhone'] = customerPhone;
+    }
+    if (address != null && address.isNotEmpty) body['address'] = address;
+    if (addressNote != null && addressNote.isNotEmpty) {
+      body['addressNote'] = addressNote;
+    }
+
     final response = await _client.post(
       _uri('/api/orders'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'items': items.map((e) => e.toJson()).toList(),
-        'total': total,
-      }),
+      body: jsonEncode(body),
     );
     _guard(response, 'Failed to submit order');
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;

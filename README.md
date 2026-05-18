@@ -1,78 +1,95 @@
 # Dream
 
-Direct ordering MVP for local restaurants/businesses with **no login flow** and a fast two-screen UX.
+Direct ordering MVP for local restaurants / B2B daily essentials. Two-screen mobile UX, single-operator admin, no customer auth.
 
-## Project Structure
+## Project layout
 
-- `flutter_app/` — Flutter mobile client
-- `backend/` — Node.js + Express API with JSON-file persistence
-- `docs/ARCHITECTURE.md` — lightweight architecture notes
-- `docs/API_CONTRACT.md` — API request/response contract
+```
+.
+├── flutter_app/    Mobile client (Flutter, light + dark, glass UI)
+├── backend/        Node + Express + SQLite + Gebeta Maps geocoding
+├── admin/          React + Vite + Tailwind admin console (orders map, CRUD)
+└── docs/           API contract + architecture notes
+```
 
-## 1) Run Backend (Node.js + Express)
+## Quick start (local dev)
+
+### 1. Backend
 
 ```bash
-cd /home/ubuntu/.openclaw/workspace/Dream/backend
+cd backend
+cp .env.example .env       # then fill in ADMIN_TOKEN and (optionally) GEBETA_API_KEY
 npm install
-npm start
+npm start                  # http://localhost:4000
 ```
 
-Backend default URL: `http://localhost:4000`
+`ADMIN_TOKEN` is the bearer string both the admin web app and any direct curl calls must send. Generate one with `openssl rand -hex 32`.
 
-## 2) Run Flutter App
+### 2. Admin web app
 
 ```bash
-cd /home/ubuntu/.openclaw/workspace/Dream/flutter_app
-/home/ubuntu/flutter-sdk/bin/flutter pub get
-/home/ubuntu/flutter-sdk/bin/flutter run --dart-define=BACKEND_URL=http://localhost:4000
+cd admin
+npm install
+npm run dev                # http://localhost:5173
 ```
 
-> For Android emulator, use:
->
-> `--dart-define=BACKEND_URL=http://10.0.2.2:4000`
+The dev server proxies `/api/*` to `http://localhost:4000` so no CORS pain in development. In production set `VITE_BACKEND_URL` to your deployed backend URL.
 
-## Flutter App Features
-
-- Home screen:
-  - Ad carousel (backend-driven)
-  - Product list with price and +/- quantity controls
-  - Running total amount
-  - Buy Now button
-- Checkout screen:
-  - Order summary
-  - Payment instructions (from backend)
-  - Admin phone and call CTA
-- No auth, no profile, no extra tabs
-
-## Backend API Endpoints
-
-- `GET /api/ads`
-- `GET /api/products`
-- `GET /api/config`
-- `POST /api/orders`
-- `GET /api/orders`
-
-See `docs/API_CONTRACT.md` for full payloads.
-
-## Verification Done
-
-### Flutter
+### 3. Flutter app
 
 ```bash
-cd /home/ubuntu/.openclaw/workspace/Dream/flutter_app
-/home/ubuntu/flutter-sdk/bin/flutter analyze
+cd flutter_app
+flutter pub get
+# Android emulator points at the host machine's 4000 via 10.0.2.2
+flutter run -d emulator-5554 --dart-define=BACKEND_URL=http://10.0.2.2:4000
+# Or Chrome for a quick desktop preview
+flutter run -d chrome --dart-define=BACKEND_URL=http://localhost:4000
 ```
 
-Result: **No issues found**
+## What's in the box
 
-### Backend smoke run
+### Customer mobile app
 
-- Started backend
-- Hit `GET /api/ads`, `GET /api/products`, `GET /api/config`
-- Submitted sample order via `POST /api/orders`
-- Verified order listing via `GET /api/orders`
+- Light + dark theme toggle (top-right pill)
+- Frosted-glass product rows over an ambient motif background
+- Auto-scrolling ad carousel driven by the backend
+- Delivery bottom sheet (phone + address + optional note) captured before order submission
+- Order summary + payment instructions screen with admin-call CTA
 
-## Persistence
+### Backend API
 
-- Seed data: `backend/data/seed.json`
-- Runtime DB: `backend/data/db.json`
+- `GET  /api/ads | /api/products | /api/config`
+- `POST /api/orders`  → server-side total recompute, optional Gebeta forward-geocode of the address into lat/lon
+- `GET  /api/orders`
+- `/api/admin/*` (Bearer auth) full CRUD for products, ads, config, plus order status transitions: `submitted → confirmed → dispatched → delivered` (+ `cancelled`)
+- Storage: SQLite via `better-sqlite3`, WAL journaling, transactional order writes — no JSON-file race risk
+
+### Admin web app
+
+- Token-based sign-in
+- Orders table with status pill + one-click status advancement
+- Map view (Leaflet) plotting located orders. Tile source defaults to OpenStreetMap; set `VITE_GEBETA_TILE_URL` to use Gebeta tiles
+- Products / Ads / Config CRUD pages
+
+## Deployment to Railway
+
+Two services per repo: `backend` and `admin`. Both have a `railway.json` configured for the Nixpacks builder.
+
+1. **Push this repo to GitHub** (already wired to `origin`)
+2. **Backend service**
+   - Root directory: `backend`
+   - Environment vars: `ADMIN_TOKEN`, `GEBETA_API_KEY`, optional `DREAM_DB_PATH=/data/dream.db` if you attach a volume
+   - Attach a persistent volume mounted at `/data` to keep SQLite across deploys
+3. **Admin service**
+   - Root directory: `admin`
+   - Environment var: `VITE_BACKEND_URL=https://<your-backend>.up.railway.app`
+4. **Flutter app**
+   - Build the APK with the backend URL baked in: `flutter build apk --release --dart-define=BACKEND_URL=https://<your-backend>.up.railway.app`
+
+## Gebeta Maps integration
+
+The backend uses the [Gebeta](https://docs.gebeta.app/) forward geocoding endpoint to turn the customer-entered address into latitude/longitude at order-creation time. If `GEBETA_API_KEY` is unset, orders still flow through — the admin map just won't have pins for those rows.
+
+- Forward geocoding: `GET https://mapapi.gebeta.app/api/v1/route/geocoding?name=...&apiKey=...`
+- Directions / routing primitives also live under `https://mapapi.gebeta.app/api/route/...`
+- See `backend/src/gebeta.js` for the wrapper.

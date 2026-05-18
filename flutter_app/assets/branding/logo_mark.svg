@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 160">
+  <!-- Wordmark variant for in-app header. Mark on the left, "Dream" word on the right. -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F8480"/>
+      <stop offset="100%" stop-color="#0A4F4D"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFB74D"/>
+      <stop offset="100%" stop-color="#FF9800"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(8 8)">
+    <rect width="144" height="144" rx="36" fill="url(#bg)"/>
+    <g transform="translate(72 72)">
+      <circle r="48" fill="#F1FAF9"/>
+      <circle cx="18" cy="-3" r="44" fill="url(#bg)"/>
+    </g>
+    <path d="M89 66 L74 90 L85 90 L77 113 L100 84 L88 84 Z"
+          fill="url(#spark)" stroke="#F1FAF9" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+
+  <text x="180" y="105"
+        font-family="-apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="92" font-weight="700" letter-spacing="-2"
+        fill="#0A3534">Dream</text>
+</svg>

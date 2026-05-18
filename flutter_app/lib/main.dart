@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'providers/order_provider.dart';
 import 'screens/home_screen.dart';
 import 'services/api_service.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_controller.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,34 +17,33 @@ class DreamApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<OrderProvider>(
-      create: (_) => OrderProvider(apiService: ApiService())..loadInitialData(),
-      child: MaterialApp(
-        title: 'Dream',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF0B7B78),
-            primary: const Color(0xFF0B7B78),
-            secondary: const Color(0xFFFF9800),
-            surface: const Color(0xFFEFF8F8),
-          ),
-          scaffoldBackgroundColor: const Color(0xFF33C7C9),
-          cardTheme: CardThemeData(
-            color: const Color(0xFFEAF5F5),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-          ),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            foregroundColor: Colors.white,
-          ),
-          useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ThemeController>(
+          create: (_) => ThemeController(),
         ),
-        home: const HomeScreen(),
+        ChangeNotifierProvider<OrderProvider>(
+          create: (_) => OrderProvider(apiService: ApiService())
+            ..loadInitialData(),
+        ),
+      ],
+      child: Consumer<ThemeController>(
+        builder: (context, themeCtrl, _) {
+          final palette = themeCtrl.isDark
+              ? DreamPalette.dark
+              : DreamPalette.light;
+          return DreamPaletteScope(
+            palette: palette,
+            child: MaterialApp(
+              title: 'Dream',
+              debugShowCheckedModeBanner: false,
+              themeMode: themeCtrl.mode,
+              theme: buildLightTheme(),
+              darkTheme: buildDarkTheme(),
+              home: const HomeScreen(),
+            ),
+          );
+        },
       ),
     );
   }

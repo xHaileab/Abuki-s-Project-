@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dream — a calm crescent + spark mark for B2B daily-essentials commerce.
+       Concept: the crescent says "reliable cycle of supply" (orders come on rhythm,
+       like a moon phase). The spark says "instant action" (one tap to restock).
+       Together they read as "set it and forget it" for boring-but-essential SKUs.
+       Single colour, scales to any launcher size, looks good in dark and light. -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F8480"/>
+      <stop offset="100%" stop-color="#0A4F4D"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFB74D"/>
+      <stop offset="100%" stop-color="#FF9800"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded-square backdrop, mode-agnostic deep teal -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bg)"/>
+
+  <!-- Crescent: implied "D" using two offset circles. Negative space forms the letter. -->
+  <g transform="translate(256 256)">
+    <circle cx="0" cy="0" r="148" fill="#F1FAF9"/>
+    <circle cx="56" cy="-10" r="138" fill="url(#bg)"/>
+  </g>
+
+  <!-- Spark — bottom-right of the crescent. Stylized lightning glyph. -->
+  <path d="M310 220 L262 296 L296 296 L268 372 L348 268 L312 268 Z"
+        fill="url(#spark)" stroke="#F1FAF9" stroke-width="6" stroke-linejoin="round"/>
+</svg>

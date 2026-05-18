@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
+import '../theme/app_theme.dart';
+import 'glass_container.dart';
 
 class ProductRow extends StatelessWidget {
   const ProductRow({
@@ -18,52 +20,61 @@ class ProductRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.30),
-        borderRadius: BorderRadius.circular(18),
-      ),
+    final palette = DreamPaletteScope.of(context);
+    return GlassContainer(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      borderRadius: 14,
       child: Row(
         children: <Widget>[
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  product.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 19,
-                    color: Color(0xFF0B5F5D),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${product.price.toStringAsFixed(2)} ETB / item',
-                  style: const TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-              ],
+            flex: 5,
+            child: Text(
+              product.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: palette.textPrimary,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              '${product.price.toStringAsFixed(0)} ETB',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: palette.textMuted,
+              ),
             ),
           ),
           _QtyButton(
             icon: Icons.remove,
             onPressed: quantity > 0 ? onDecrement : null,
             isPrimary: false,
+            palette: palette,
           ),
           SizedBox(
-            width: 40,
+            width: 30,
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 24,
-                color: Color(0xFF0A3534),
+                fontSize: 17,
+                color: palette.textPrimary,
               ),
             ),
           ),
-          _QtyButton(icon: Icons.add, onPressed: onIncrement, isPrimary: true),
+          _QtyButton(
+            icon: Icons.add,
+            onPressed: onIncrement,
+            isPrimary: true,
+            palette: palette,
+          ),
         ],
       ),
     );
@@ -75,35 +86,42 @@ class _QtyButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     required this.isPrimary,
+    required this.palette,
   });
 
   final IconData icon;
   final VoidCallback? onPressed;
   final bool isPrimary;
+  final DreamPalette palette;
 
   @override
   Widget build(BuildContext context) {
     final background = isPrimary
         ? const Color(0xFF0B7B78)
-        : const Color(0xFFD7ECEC);
-
-    final foreground = isPrimary ? Colors.white : const Color(0xFF0B7B78);
+        : palette.glassFill;
+    final foreground = isPrimary
+        ? Colors.white
+        : palette.textPrimary;
+    final disabled = onPressed == null;
 
     return SizedBox(
-      width: 42,
-      height: 42,
+      width: 32,
+      height: 32,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: palette.glassBorder, width: 1),
           ),
           backgroundColor: background,
           foregroundColor: foreground,
+          disabledBackgroundColor: background.withValues(alpha: 0.4),
+          disabledForegroundColor: foreground.withValues(alpha: 0.4),
           elevation: 0,
         ),
-        child: Icon(icon),
+        child: Icon(icon, size: 16, color: disabled ? foreground.withValues(alpha: 0.4) : foreground),
       ),
     );
   }

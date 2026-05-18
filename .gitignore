@@ -1,7 +1,18 @@
+# Editor / IDE
+.idea/
+.vscode/
+.claude/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
 # Flutter
 **/.dart_tool/
 **/build/
-**/.idea/
 **/.packages
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
@@ -9,7 +20,18 @@
 
 # Node
 **/node_modules/
-*.log
 
-# OS
-.DS_Store
+# Backend
+backend/.env
+backend/.env.local
+backend/data/dream.db
+backend/data/dream.db-shm
+backend/data/dream.db-wal
+backend/data/db.json
+backend/logs/
+
+# Admin web
+admin/dist/
+admin/.env
+admin/.env.local
+admin/.vite/
