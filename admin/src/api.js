@@ -63,4 +63,15 @@ export const api = {
   getOrder: (id) => request('GET', `/api/admin/orders/${id}`),
   updateOrderStatus: (id, status) =>
     request('PATCH', `/api/admin/orders/${id}`, { status }),
+
+  // Uploads — returns { id, url, imageUrl }
+  uploadImage: (dataUrl) => request('POST', '/api/admin/uploads', { dataUrl }),
 };
+
+/** Resolve a stored image URL (often relative like /static/uploads/..)
+ *  to something the browser can load in any environment. */
+export function resolveImageUrl(value) {
+  if (!value) return '';
+  if (value.startsWith('/')) return `${BASE}${value}`;
+  return value;
+}

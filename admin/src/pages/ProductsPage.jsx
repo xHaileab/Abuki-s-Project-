@@ -8,7 +8,7 @@ import {
   X,
   ImageOff,
 } from 'lucide-react';
-import { api } from '../api.js';
+import { api, resolveImageUrl } from '../api.js';
 import {
   Button,
   IconButton,
@@ -20,6 +20,7 @@ import {
   Field,
   inputClass,
 } from '../components/ui.jsx';
+import ImageInput from '../components/ImageInput.jsx';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -124,13 +125,11 @@ export default function ProductsPage() {
               />
             </Field>
           </div>
-          <div className="flex-1 min-w-[16rem]">
-            <Field label="Image URL (optional)">
-              <input
+          <div className="flex-1 min-w-[20rem]">
+            <Field label="Image (optional)">
+              <ImageInput
                 value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                className={inputClass}
-                placeholder="https://…"
+                onChange={(v) => setForm({ ...form, imageUrl: v })}
               />
             </Field>
           </div>
@@ -198,7 +197,7 @@ function Thumb({ url, name }) {
   }
   return (
     <img
-      src={url}
+      src={resolveImageUrl(url)}
       alt={name}
       className="w-9 h-9 rounded-lg object-cover bg-slate-100 shrink-0"
       onError={(e) => {
@@ -245,11 +244,9 @@ function ProductRow({ product, onSave, onDelete }) {
       </td>
       <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">
         {editing ? (
-          <input
+          <ImageInput
             value={draft.imageUrl || ''}
-            onChange={(e) => setDraft({ ...draft, imageUrl: e.target.value })}
-            className={`${inputClass} py-1.5`}
-            placeholder="https://…"
+            onChange={(v) => setDraft({ ...draft, imageUrl: v })}
           />
         ) : (
           <span className="truncate block">{product.imageUrl || '—'}</span>

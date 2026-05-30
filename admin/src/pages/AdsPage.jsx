@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Megaphone, Plus, Trash2, ImageOff } from 'lucide-react';
-import { api } from '../api.js';
+import { api, resolveImageUrl } from '../api.js';
 import {
   Button,
-  IconButton,
   Card,
   PageHeader,
   EmptyState,
@@ -12,6 +11,7 @@ import {
   Field,
   inputClass,
 } from '../components/ui.jsx';
+import ImageInput from '../components/ImageInput.jsx';
 
 export default function AdsPage() {
   const [ads, setAds] = useState([]);
@@ -112,12 +112,10 @@ export default function AdsPage() {
               placeholder="Order now and save 15%"
             />
           </Field>
-          <Field label="Image URL">
-            <input
+          <Field label="Image">
+            <ImageInput
               value={form.imageUrl}
-              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-              className={inputClass}
-              placeholder="https://… or /static/images/..."
+              onChange={(v) => setForm({ ...form, imageUrl: v })}
             />
           </Field>
           <div className="sm:col-span-2 flex justify-end">
@@ -152,7 +150,7 @@ export default function AdsPage() {
               <div className="aspect-video bg-slate-100 grid place-items-center overflow-hidden">
                 {ad.imageUrl ? (
                   <img
-                    src={ad.imageUrl}
+                    src={resolveImageUrl(ad.imageUrl)}
                     alt={ad.title}
                     className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
                   />

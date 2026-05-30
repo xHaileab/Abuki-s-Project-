@@ -10,16 +10,13 @@ import {
   Field,
   inputClass,
 } from '../components/ui.jsx';
+import ImageInput from '../components/ImageInput.jsx';
 
 const FIELDS = [
   { key: 'adminPhone', label: 'Admin phone' },
   { key: 'telebirrMerchantName', label: 'Telebirr merchant name' },
   { key: 'telebirrPhone', label: 'Telebirr phone/account' },
-  {
-    key: 'telebirrQrImageUrl',
-    label: 'Telebirr QR image URL',
-    placeholder: '/static/images/your-telebirr-qr.png',
-  },
+  { key: 'telebirrQrImageUrl', label: 'Telebirr QR image', image: true },
   { key: 'paymentInstructions', label: 'Payment instructions', multiline: true },
 ];
 
@@ -87,7 +84,12 @@ export default function ConfigPage() {
           <form onSubmit={save} className="space-y-4">
             {FIELDS.map((f) => (
               <Field key={f.key} label={f.label}>
-                {f.multiline ? (
+                {f.image ? (
+                  <ImageInput
+                    value={config[f.key] || ''}
+                    onChange={(v) => setConfig({ ...config, [f.key]: v })}
+                  />
+                ) : f.multiline ? (
                   <textarea
                     rows={5}
                     value={config[f.key] || ''}

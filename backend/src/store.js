@@ -27,6 +27,10 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS products (
     id TEXT PRIMARY KEY,
@@ -73,6 +77,13 @@ db.exec(`
     name TEXT NOT NULL,
     price REAL NOT NULL,
     quantity INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS images (
+    id TEXT PRIMARY KEY,
+    mime TEXT NOT NULL,
+    bytes BLOB NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
@@ -171,21 +182,32 @@ function getProduct(id) {
     .get(id);
 }
 
-function updateProduct(id, { name, price, imageUrl }) {
+function updateProduct(id, patch) {
   const existing = getProduct(id);
   if (!existing) return null;
-  db.prepare(
-    `UPDATE products
-     SET name = COALESCE(?, name),
-         price = COALESCE(?, price),
-         image_url = COALESCE(?, image_url)
-     WHERE id = ?`
-  ).run(
-    name ?? null,
-    price !== undefined ? Number(price) : null,
-    imageUrl !== undefined ? imageUrl : null,
-    id
-  );
+
+  const updates = [];
+  const params = [];
+  if (hasOwn(patch, 'name')) {
+    updates.push('name = ?');
+    params.push(patch.name);
+  }
+  if (hasOwn(patch, 'price')) {
+    updates.push('price = ?');
+    params.push(Number(patch.price));
+  }
+  if (hasOwn(patch, 'imageUrl')) {
+    updates.push('image_url = ?');
+    params.push(patch.imageUrl);
+  }
+
+  if (updates.length > 0) {
+    params.push(id);
+    db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(
+      ...params
+    );
+  }
+
   return getProduct(id);
 }
 
@@ -223,17 +245,36 @@ function getAd(id) {
     .get(id);
 }
 
-function updateAd(id, { title, subtitle, tag, imageUrl }) {
+function updateAd(id, patch) {
   const existing = getAd(id);
   if (!existing) return null;
-  db.prepare(
-    `UPDATE ads
-     SET title = COALESCE(?, title),
-         subtitle = COALESCE(?, subtitle),
-         tag = COALESCE(?, tag),
-         image_url = COALESCE(?, image_url)
-     WHERE id = ?`
-  ).run(title ?? null, subtitle ?? null, tag ?? null, imageUrl ?? null, id);
+
+  const updates = [];
+  const params = [];
+  if (hasOwn(patch, 'title')) {
+    updates.push('title = ?');
+    params.push(patch.title);
+  }
+  if (hasOwn(patch, 'subtitle')) {
+    updates.push('subtitle = ?');
+    params.push(patch.subtitle);
+  }
+  if (hasOwn(patch, 'tag')) {
+    updates.push('tag = ?');
+    params.push(patch.tag);
+  }
+  if (hasOwn(patch, 'imageUrl')) {
+    updates.push('image_url = ?');
+    params.push(patch.imageUrl);
+  }
+
+  if (updates.length > 0) {
+    params.push(id);
+    db.prepare(`UPDATE ads SET ${updates.join(', ')} WHERE id = ?`).run(
+      ...params
+    );
+  }
+
   return getAd(id);
 }
 
@@ -361,6 +402,25 @@ function createOrder({
   return getOrder(id);
 }
 
+// ── Images ──────────────────────────────────────────────────────────────
+// Stored as BLOBs and served back via GET /static/uploads/:id. Keeps the
+// app infra-free (no object storage to provision) and works identically to
+// the Firestore store's image collection.
+function saveImage({ mime, base64 }) {
+  const id = `img-${crypto.randomUUID().slice(0, 12)}`;
+  const bytes = Buffer.from(base64, 'base64');
+  db.prepare(
+    `INSERT INTO images (id, mime, bytes) VALUES (?, ?, ?)`
+  ).run(id, mime, bytes);
+  return id;
+}
+
+function getImage(id) {
+  const row = db.prepare(`SELECT mime, bytes FROM images WHERE id = ?`).get(id);
+  if (!row) return null;
+  return { mime: row.mime, base64: Buffer.from(row.bytes).toString('base64') };
+}
+
 const VALID_STATUSES = new Set([
   'submitted',
   'confirmed',
@@ -398,5 +458,7 @@ module.exports = {
   getOrder,
   createOrder,
   updateOrderStatus,
+  saveImage,
+  getImage,
   VALID_STATUSES,
 };
