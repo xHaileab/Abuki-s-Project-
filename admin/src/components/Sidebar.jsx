@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Package, ShoppingBag, Megaphone, Settings, LogOut } from 'lucide-react';
 import { setToken } from '../auth.js';
@@ -9,16 +10,25 @@ const ITEMS = [
   { to: '/config', label: 'Config', icon: Settings },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }) {
   const nav = useNavigate();
+  const [logoOk, setLogoOk] = useState(true);
+
   return (
-    <aside className="w-60 shrink-0 bg-white border-r border-slate-200 flex flex-col">
+    <aside className="w-64 h-full shrink-0 bg-white border-r border-slate-200 flex flex-col">
       <div className="px-5 py-5 flex items-center gap-3 border-b border-slate-100">
-        <img
-          src="/logo_1024.png"
-          alt="Dream"
-          className="w-10 h-10 rounded-xl shadow-sm"
-        />
+        {logoOk ? (
+          <img
+            src="/logo_1024.png"
+            alt="Dream"
+            className="w-10 h-10 rounded-xl shadow-sm"
+            onError={() => setLogoOk(false)}
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-xl bg-brand text-white grid place-items-center font-extrabold">
+            D
+          </div>
+        )}
         <div className="leading-tight">
           <div className="font-extrabold tracking-tight text-slate-900">
             Dream
@@ -29,11 +39,12 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {ITEMS.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 isActive
@@ -65,6 +76,7 @@ export default function Sidebar() {
         <button
           onClick={() => {
             setToken('');
+            onNavigate?.();
             nav('/login');
           }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
