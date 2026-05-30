@@ -1,8 +1,25 @@
 import { useEffect, useState } from 'react';
+import { Settings, Save, CheckCircle2 } from 'lucide-react';
 import { api } from '../api.js';
+import {
+  Button,
+  Card,
+  PageHeader,
+  ErrorBanner,
+  Spinner,
+  Field,
+  inputClass,
+} from '../components/ui.jsx';
 
 const FIELDS = [
   { key: 'adminPhone', label: 'Admin phone' },
+  { key: 'telebirrMerchantName', label: 'Telebirr merchant name' },
+  { key: 'telebirrPhone', label: 'Telebirr phone/account' },
+  {
+    key: 'telebirrQrImageUrl',
+    label: 'Telebirr QR image URL',
+    placeholder: '/static/images/your-telebirr-qr.png',
+  },
   { key: 'paymentInstructions', label: 'Payment instructions', multiline: true },
 ];
 
@@ -14,10 +31,16 @@ export default function ConfigPage() {
   const [ok, setOk] = useState('');
 
   useEffect(() => {
-    api.getConfig().then((c) => {
-      setConfig(c || {});
-      setLoading(false);
-    });
+    api
+      .getConfig()
+      .then((c) => {
+        setConfig(c || {});
+        setLoading(false);
+      })
+      .catch((e) => {
+        setError(e.message);
+        setLoading(false);
+      });
   }, []);
 
   async function save(e) {
@@ -27,8 +50,8 @@ export default function ConfigPage() {
     setOk('');
     try {
       await api.updateConfig(config);
-      setOk('Saved.');
-      setTimeout(() => setOk(''), 1500);
+      setOk('Changes saved.');
+      setTimeout(() => setOk(''), 2000);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -36,53 +59,65 @@ export default function ConfigPage() {
     }
   }
 
-  if (loading) return <div className="text-slate-400">Loading…</div>;
-
   return (
-    <form onSubmit={save} className="space-y-4 max-w-2xl">
-      <h1 className="text-2xl font-extrabold">Storefront config</h1>
+    <div className="space-y-6 max-w-2xl">
+      <PageHeader
+        title="Storefront config"
+        subtitle="Payment details and instructions shown to customers"
+        icon={Settings}
+      />
 
-      {error && (
-        <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
-          {error}
-        </div>
-      )}
+      <ErrorBanner>{error}</ErrorBanner>
+
       {ok && (
-        <div className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3.5 py-2.5 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4" />
           {ok}
         </div>
       )}
 
-      {FIELDS.map((f) => (
-        <label key={f.key} className="block">
-          <span className="text-xs font-semibold text-slate-600">{f.label}</span>
-          {f.multiline ? (
-            <textarea
-              rows={5}
-              value={config[f.key] || ''}
-              onChange={(e) =>
-                setConfig({ ...config, [f.key]: e.target.value })
-              }
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300"
-            />
-          ) : (
-            <input
-              value={config[f.key] || ''}
-              onChange={(e) =>
-                setConfig({ ...config, [f.key]: e.target.value })
-              }
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300"
-            />
-          )}
-        </label>
-      ))}
+      {loading ? (
+        <Card className="grid place-items-center py-12">
+          <span className="flex items-center gap-2 text-slate-400 text-sm">
+            <Spinner className="w-4 h-4" /> Loading…
+          </span>
+        </Card>
+      ) : (
+        <Card className="p-6">
+          <form onSubmit={save} className="space-y-4">
+            {FIELDS.map((f) => (
+              <Field key={f.key} label={f.label}>
+                {f.multiline ? (
+                  <textarea
+                    rows={5}
+                    value={config[f.key] || ''}
+                    onChange={(e) =>
+                      setConfig({ ...config, [f.key]: e.target.value })
+                    }
+                    placeholder={f.placeholder || ''}
+                    className={`${inputClass} resize-y`}
+                  />
+                ) : (
+                  <input
+                    value={config[f.key] || ''}
+                    onChange={(e) =>
+                      setConfig({ ...config, [f.key]: e.target.value })
+                    }
+                    placeholder={f.placeholder || ''}
+                    className={inputClass}
+                  />
+                )}
+              </Field>
+            ))}
 
-      <button
-        disabled={saving}
-        className="bg-brand text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
-      >
-        {saving ? 'Saving…' : 'Save'}
-      </button>
-    </form>
+            <div className="pt-2">
+              <Button type="submit" icon={Save} loading={saving}>
+                {saving ? 'Saving…' : 'Save changes'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+    </div>
   );
 }

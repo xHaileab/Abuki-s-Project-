@@ -4,19 +4,63 @@
 
 :root {
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
 }
 
 body {
-  background: #F5F7F7;
-  color: #0A3534;
+  /* Soft tinted backdrop so white cards read with depth. */
+  background: radial-gradient(
+      1200px 600px at 100% -10%,
+      rgba(51, 199, 201, 0.1),
+      transparent 60%
+    ),
+    #f3f6f6;
+  color: #0a3534;
+}
+
+/* Refined, unobtrusive scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c5d6d5 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #c5d6d5;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #a9c4c2;
+  background-clip: content-box;
 }
 
 /* MapLibre takes over its container; keep its popups in our type family. */
 .maplibregl-popup-content {
   font-family: inherit;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px -12px rgba(10, 53, 52, 0.25);
+  padding: 12px 14px;
+}
+
+/* Tame the native number-input spinners for a cleaner form look. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
 }

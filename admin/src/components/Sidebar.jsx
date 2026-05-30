@@ -1,55 +1,78 @@
 import { NavLink, useNavigate } from 'react-router-dom';
+import { Package, ShoppingBag, Megaphone, Settings, LogOut } from 'lucide-react';
 import { setToken } from '../auth.js';
 
 const ITEMS = [
-  { to: '/orders', label: 'Orders', icon: '📦' },
-  { to: '/products', label: 'Products', icon: '🛒' },
-  { to: '/ads', label: 'Ads', icon: '📣' },
-  { to: '/config', label: 'Config', icon: '⚙️' },
+  { to: '/orders', label: 'Orders', icon: Package },
+  { to: '/products', label: 'Products', icon: ShoppingBag },
+  { to: '/ads', label: 'Ads', icon: Megaphone },
+  { to: '/config', label: 'Config', icon: Settings },
 ];
 
 export default function Sidebar() {
   const nav = useNavigate();
   return (
-    <aside className="w-56 shrink-0 bg-white border-r border-slate-200 flex flex-col">
+    <aside className="w-60 shrink-0 bg-white border-r border-slate-200 flex flex-col">
       <div className="px-5 py-5 flex items-center gap-3 border-b border-slate-100">
-        <div className="w-9 h-9 rounded-xl bg-brand text-white grid place-items-center font-extrabold">
-          D
-        </div>
-        <div>
-          <div className="font-extrabold tracking-tight">Dream</div>
-          <div className="text-xs text-slate-500 -mt-0.5">Admin</div>
+        <img
+          src="/logo_1024.png"
+          alt="Dream"
+          className="w-10 h-10 rounded-xl shadow-sm"
+        />
+        <div className="leading-tight">
+          <div className="font-extrabold tracking-tight text-slate-900">
+            Dream
+          </div>
+          <div className="text-[11px] font-medium uppercase tracking-wider text-brand">
+            Admin Console
+          </div>
         </div>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {ITEMS.map((it) => (
+        {ITEMS.map(({ to, label, icon: Icon }) => (
           <NavLink
-            key={it.to}
-            to={it.to}
+            key={to}
+            to={to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
+              `group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-brand text-white'
-                  : 'text-slate-700 hover:bg-slate-100'
+                  ? 'bg-brand text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`
             }
           >
-            <span>{it.icon}</span>
-            <span>{it.label}</span>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-brand-accent" />
+                )}
+                <Icon
+                  className={`w-[18px] h-[18px] ${
+                    isActive
+                      ? 'text-white'
+                      : 'text-slate-400 group-hover:text-slate-600'
+                  }`}
+                />
+                <span>{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      <button
-        onClick={() => {
-          setToken('');
-          nav('/login');
-        }}
-        className="m-3 text-sm text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 text-left"
-      >
-        Sign out
-      </button>
+      <div className="p-3 border-t border-slate-100">
+        <button
+          onClick={() => {
+            setToken('');
+            nav('/login');
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+        >
+          <LogOut className="w-[18px] h-[18px]" />
+          <span>Sign out</span>
+        </button>
+      </div>
     </aside>
   );
 }

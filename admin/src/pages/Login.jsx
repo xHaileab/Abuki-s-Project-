@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { KeyRound, LogIn, ShieldCheck } from 'lucide-react';
 import { setToken } from '../auth.js';
 import { api } from '../api.js';
+import { Button, ErrorBanner, inputClass } from '../components/ui.jsx';
 
 /**
  * Operator pastes the ADMIN_TOKEN here. We confirm it works by hitting
@@ -31,55 +33,60 @@ export default function Login() {
 
   return (
     <div className="min-h-full flex items-center justify-center px-4">
-      <form
-        onSubmit={submit}
-        className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 space-y-4"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand text-white grid place-items-center font-extrabold text-xl">
-            D
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight">
-              Dream Admin
-            </h1>
-            <p className="text-xs text-slate-500">Sign in to manage your shop</p>
-          </div>
+      <div className="w-full max-w-sm animate-scale-in">
+        <div className="flex flex-col items-center mb-6">
+          <img
+            src="/logo_1024.png"
+            alt="Dream"
+            className="w-16 h-16 rounded-2xl shadow-soft mb-3"
+          />
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
+            Dream Admin
+          </h1>
+          <p className="text-sm text-slate-500">Sign in to manage your shop</p>
         </div>
 
-        <label className="block">
-          <span className="text-xs font-semibold text-slate-600">
-            Admin token
-          </span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={token}
-            onChange={(e) => setTok(e.target.value)}
-            placeholder="paste your ADMIN_TOKEN"
-            className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none"
-            required
-          />
-        </label>
-
-        {err && (
-          <div className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
-            {err}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full bg-brand text-white py-2 rounded-lg font-semibold disabled:opacity-50"
+        <form
+          onSubmit={submit}
+          className="bg-white rounded-2xl shadow-soft border border-slate-200/70 p-6 space-y-4"
         >
-          {busy ? 'Verifying…' : 'Sign in'}
-        </button>
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Admin token
+            </span>
+            <div className="relative mt-1.5">
+              <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={token}
+                onChange={(e) => setTok(e.target.value)}
+                placeholder="paste your ADMIN_TOKEN"
+                className={`${inputClass} pl-9`}
+                required
+                autoFocus
+              />
+            </div>
+          </label>
 
-        <p className="text-[11px] text-slate-400">
-          The token is stored only on this browser. Clear it via the sidebar.
-        </p>
-      </form>
+          <ErrorBanner>{err}</ErrorBanner>
+
+          <Button
+            type="submit"
+            size="lg"
+            icon={LogIn}
+            loading={busy}
+            className="w-full"
+          >
+            {busy ? 'Verifying…' : 'Sign in'}
+          </Button>
+
+          <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Stored only on this browser. Clear it via Sign out.
+          </p>
+        </form>
+      </div>
     </div>
   );
 }
