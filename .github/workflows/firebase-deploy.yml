@@ -1,0 +1,89 @@
+name: Firebase Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: firebase-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.FIREBASE_DEPLOY == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIRESTORE_DATABASE_ID: ${{ vars.FIRESTORE_DATABASE_ID }}
+      FIREBASE_CORS_ORIGIN: ${{ vars.FIREBASE_CORS_ORIGIN }}
+      FIREBASE_ADMIN_TOKEN: ${{ secrets.FIREBASE_ADMIN_TOKEN }}
+      GEBETA_API_KEY: ${{ secrets.GEBETA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            admin/package-lock.json
+            backend/package-lock.json
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Validate Firebase variables
+        run: |
+          : "${FIREBASE_PROJECT_ID:?Missing GitHub variable FIREBASE_PROJECT_ID}"
+          : "${FIREBASE_ADMIN_TOKEN:?Missing GitHub secret FIREBASE_ADMIN_TOKEN}"
+
+      - name: Write Firebase functions env
+        run: |
+          {
+            echo "ADMIN_TOKEN=${FIREBASE_ADMIN_TOKEN}"
+            echo "DREAM_STORE=firestore"
+            if [ -n "${FIRESTORE_DATABASE_ID}" ]; then
+              echo "FIRESTORE_DATABASE_ID=${FIRESTORE_DATABASE_ID}"
+            fi
+            if [ -n "${FIREBASE_CORS_ORIGIN}" ]; then
+              echo "CORS_ORIGIN=${FIREBASE_CORS_ORIGIN}"
+            fi
+            if [ -n "${GEBETA_API_KEY}" ]; then
+              echo "GEBETA_API_KEY=${GEBETA_API_KEY}"
+            fi
+          } > "backend/.env.${FIREBASE_PROJECT_ID}"
+
+      - name: Install admin dependencies
+        working-directory: admin
+        run: npm ci
+
+      - name: Build admin
+        working-directory: admin
+        run: npm run build
+
+      - name: Install functions dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Deploy Firebase
+        run: >
+          npx firebase-tools@15.18.0 deploy
+          --project "$FIREBASE_PROJECT_ID"
+          --only hosting,functions
+          --non-interactive

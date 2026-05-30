@@ -50,7 +50,10 @@
   ],
   "config": {
     "adminPhone": "+251911223344",
-    "paymentInstructions": "1) Send payment to Telebirr 0911 22 33 44. 2) Keep your transaction reference. 3) Call admin with your Order ID for confirmation and dispatch."
+    "paymentInstructions": "1) Open telebirr and scan the QR code. 2) Pay the exact order total. 3) Keep your transaction reference and call admin with your Order ID.",
+    "telebirrMerchantName": "Dream Direct Orders",
+    "telebirrPhone": "+251911223344",
+    "telebirrQrImageUrl": ""
   },
   "orders": []
 }

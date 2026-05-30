@@ -24,14 +24,25 @@ Thumbs.db
 # Backend
 backend/.env
 backend/.env.local
+backend/.env.*
+!backend/.env.example
 backend/data/dream.db
 backend/data/dream.db-shm
 backend/data/dream.db-wal
 backend/data/db.json
 backend/logs/
 
+# Firebase
+.firebaserc
+.firebase/
+firebase-auth-code.txt
+
 # Admin web
 admin/dist/
 admin/.env
 admin/.env.local
 admin/.vite/
+
+# Build artifacts / binaries (distribute APKs via releases, not git)
+/dist/
+*.apk

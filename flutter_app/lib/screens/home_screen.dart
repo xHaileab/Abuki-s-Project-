@@ -48,9 +48,7 @@ class HomeScreen extends StatelessWidget {
                   child: Consumer<OrderProvider>(
                     builder: (context, provider, _) {
                       if (provider.isLoading && provider.products.isEmpty) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
+                        return const Center(child: CircularProgressIndicator());
                       }
 
                       return RefreshIndicator(
@@ -86,8 +84,9 @@ class _OrderDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = DreamPaletteScope.of(context);
+    final selectedCount = provider.selectedItemCount;
     return GlassContainer(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       borderRadius: 20,
       blurSigma: 18,
       fillOverride: palette.cardFill,
@@ -104,14 +103,49 @@ class _OrderDetailsCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Order Details',
+                'Your basket',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
                   color: palette.textPrimary,
                 ),
               ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: selectedCount > 0
+                      ? const Color(0xFFFF9800)
+                      : palette.glassFill,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: palette.glassBorder),
+                ),
+                child: Text(
+                  selectedCount == 1 ? '1 item' : '$selectedCount items',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: selectedCount > 0
+                        ? Colors.black87
+                        : palette.textMuted,
+                  ),
+                ),
+              ),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            selectedCount == 0
+                ? 'Choose products to start an order.'
+                : 'Review quantities before checkout.',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: palette.textMuted,
+            ),
           ),
           const SizedBox(height: 10),
           if (provider.errorMessage != null)
@@ -137,37 +171,58 @@ class _OrderDetailsCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Container(
-            height: 1,
-            color: palette.glassBorder,
-          ),
+          Container(height: 1, color: palette.glassBorder),
           const SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  'Total',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: palette.textMuted,
-                    fontWeight: FontWeight.w600,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: palette.glassFill,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: palette.glassBorder),
+            ),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Order total',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: palette.textMuted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        selectedCount == 0
+                            ? 'No items selected'
+                            : 'Pay with telebirr after placing order',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: palette.textMuted.withValues(alpha: 0.82),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '${provider.total.toStringAsFixed(0)} ETB',
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: palette.totalText,
-                      fontWeight: FontWeight.w700,
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${provider.total.toStringAsFixed(0)} ETB',
+                      style: TextStyle(
+                        fontSize: 24,
+                        color: palette.totalText,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -185,19 +240,20 @@ class _BuyButton extends StatelessWidget {
     return SizedBox(
       height: 52,
       child: ElevatedButton(
-        onPressed: provider.isSubmitting
+        onPressed: provider.isSubmitting || !provider.hasSelectedItems
             ? null
             : () => _onBuyNow(context, provider),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFFF9800),
           foregroundColor: Colors.white,
+          disabledBackgroundColor: Colors.white.withValues(alpha: 0.35),
+          disabledForegroundColor: const Color(
+            0xFF0A3534,
+          ).withValues(alpha: 0.45),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
+          textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         child: provider.isSubmitting
             ? const SizedBox(
@@ -208,7 +264,11 @@ class _BuyButton extends StatelessWidget {
                   color: Colors.white,
                 ),
               )
-            : const Text('Buy Now'),
+            : Text(
+                provider.hasSelectedItems
+                    ? 'Buy Now - ${provider.total.toStringAsFixed(0)} ETB'
+                    : 'Add items to continue',
+              ),
       ),
     );
   }
@@ -260,6 +320,9 @@ class _BuyButton extends StatelessWidget {
           total: total,
           adminPhone: config.adminPhone,
           paymentInstructions: config.paymentInstructions,
+          telebirrMerchantName: config.telebirrMerchantName,
+          telebirrPhone: config.telebirrPhone,
+          telebirrQrImageUrl: config.telebirrQrImageUrl,
           orderId: receipt.id,
           createdAt: receipt.createdAt,
         ),

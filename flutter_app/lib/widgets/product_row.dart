@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/product.dart';
 import '../theme/app_theme.dart';
-import 'glass_container.dart';
 
 class ProductRow extends StatelessWidget {
   const ProductRow({
@@ -21,36 +20,89 @@ class ProductRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = DreamPaletteScope.of(context);
-    return GlassContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      borderRadius: 14,
+    final selected = quantity > 0;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: selected
+            ? Colors.white.withValues(alpha: 0.72)
+            : palette.glassFill,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: selected
+              ? const Color(0xFFFF9800).withValues(alpha: 0.55)
+              : palette.glassBorder,
+        ),
+        boxShadow: selected
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: const Color(0xFFFF9800).withValues(alpha: 0.14),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
+      ),
       child: Row(
         children: <Widget>[
-          Expanded(
-            flex: 5,
-            child: Text(
-              product.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: palette.textPrimary,
-              ),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: selected
+                  ? const Color(0xFFFF9800).withValues(alpha: 0.18)
+                  : palette.cardFill,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: palette.glassBorder),
+            ),
+            child: Icon(
+              Icons.shopping_basket_rounded,
+              size: 20,
+              color: selected ? const Color(0xFFB85D00) : palette.textMuted,
             ),
           ),
+          const SizedBox(width: 10),
           Expanded(
-            flex: 3,
-            child: Text(
-              '${product.price.toStringAsFixed(0)} ETB',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: palette.textMuted,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.5,
+                    color: palette.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${product.price.toStringAsFixed(0)} ETB each',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: palette.textMuted,
+                  ),
+                ),
+              ],
             ),
           ),
+          if (selected)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Text(
+                '${(product.price * quantity).toStringAsFixed(0)} ETB',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: palette.textPrimary,
+                ),
+              ),
+            ),
           _QtyButton(
             icon: Icons.remove,
             onPressed: quantity > 0 ? onDecrement : null,
@@ -58,7 +110,7 @@ class ProductRow extends StatelessWidget {
             palette: palette,
           ),
           SizedBox(
-            width: 30,
+            width: 34,
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
@@ -96,17 +148,13 @@ class _QtyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = isPrimary
-        ? const Color(0xFF0B7B78)
-        : palette.glassFill;
-    final foreground = isPrimary
-        ? Colors.white
-        : palette.textPrimary;
+    final background = isPrimary ? const Color(0xFF0B7B78) : palette.glassFill;
+    final foreground = isPrimary ? Colors.white : palette.textPrimary;
     final disabled = onPressed == null;
 
     return SizedBox(
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -121,7 +169,11 @@ class _QtyButton extends StatelessWidget {
           disabledForegroundColor: foreground.withValues(alpha: 0.4),
           elevation: 0,
         ),
-        child: Icon(icon, size: 16, color: disabled ? foreground.withValues(alpha: 0.4) : foreground),
+        child: Icon(
+          icon,
+          size: 17,
+          color: disabled ? foreground.withValues(alpha: 0.4) : foreground,
+        ),
       ),
     );
   }

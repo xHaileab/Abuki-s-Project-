@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deployment-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate deployment config
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+
+          const checks = [
+            {
+              path: 'backend/railway.json',
+              startCommand: 'npm start',
+              healthcheckPath: '/health',
+            },
+            {
+              path: 'admin/railway.json',
+              startCommand: 'npm start',
+              healthcheckPath: '/',
+            },
+          ];
+
+          for (const check of checks) {
+            const config = JSON.parse(fs.readFileSync(check.path, 'utf8'));
+            if (config.build?.builder !== 'RAILPACK') {
+              throw new Error(`${check.path} must use the RAILPACK builder`);
+            }
+            if (config.deploy?.startCommand !== check.startCommand) {
+              throw new Error(`${check.path} startCommand must be ${check.startCommand}`);
+            }
+            if (config.deploy?.healthcheckPath !== check.healthcheckPath) {
+              throw new Error(`${check.path} healthcheckPath must be ${check.healthcheckPath}`);
+            }
+            if (config.deploy?.restartPolicyType !== 'ON_FAILURE') {
+              throw new Error(`${check.path} restartPolicyType must be ON_FAILURE`);
+            }
+          }
+
+          const firebase = JSON.parse(fs.readFileSync('firebase.json', 'utf8'));
+          if (firebase.functions?.source !== 'backend') {
+            throw new Error('firebase.json functions.source must be backend');
+          }
+          if (firebase.functions?.runtime !== 'nodejs22') {
+            throw new Error('firebase.json functions.runtime must be nodejs22');
+          }
+          if (firebase.hosting?.public !== 'admin/dist') {
+            throw new Error('firebase.json hosting.public must be admin/dist');
+          }
+          if (!Array.isArray(firebase.hosting?.rewrites)) {
+            throw new Error('firebase.json hosting rewrites are required');
+          }
+          NODE
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm audit --omit=dev
+      - run: npm test
+
+  admin:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - run: npm ci
+      - run: npm audit --omit=dev
+      - run: npm run build
+
+  flutter:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flutter_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.2
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

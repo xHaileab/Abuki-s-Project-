@@ -100,6 +100,14 @@ class OrderProvider extends ChangeNotifier {
 
   bool get hasSelectedItems => selectedLines.isNotEmpty;
 
+  int get selectedItemCount {
+    var count = 0;
+    for (final value in _quantities.values) {
+      count += value;
+    }
+    return count;
+  }
+
   Future<OrderReceipt?> submitOrder({
     String? customerName,
     String? customerPhone,

@@ -2,11 +2,12 @@
   "name": "dream-backend",
   "version": "1.0.0",
   "description": "Dream direct ordering API",
-  "main": "src/server.js",
+  "main": "src/firebase.js",
   "type": "commonjs",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
   },
   "keywords": [
     "dream",
@@ -15,10 +16,17 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "better-sqlite3": "^11.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^7.2.5"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.5.0"
+  },
+  "overrides": {
+    "@tootallnate/once": "^3.0.1"
   },
   "directories": {
     "doc": "docs"

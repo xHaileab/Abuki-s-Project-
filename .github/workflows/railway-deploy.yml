@@ -1,0 +1,69 @@
+name: Railway Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: railway-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.RAILWAY_DEPLOY == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+      RAILWAY_ENVIRONMENT: ${{ vars.RAILWAY_ENVIRONMENT }}
+      RAILWAY_BACKEND_SERVICE: ${{ vars.RAILWAY_BACKEND_SERVICE }}
+      RAILWAY_ADMIN_SERVICE: ${{ vars.RAILWAY_ADMIN_SERVICE }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate Railway deploy variables
+        run: |
+          : "${RAILWAY_TOKEN:?Missing GitHub secret RAILWAY_TOKEN}"
+          : "${RAILWAY_PROJECT_ID:?Missing GitHub variable RAILWAY_PROJECT_ID}"
+          : "${RAILWAY_BACKEND_SERVICE:?Missing GitHub variable RAILWAY_BACKEND_SERVICE}"
+          : "${RAILWAY_ADMIN_SERVICE:?Missing GitHub variable RAILWAY_ADMIN_SERVICE}"
+          echo "RAILWAY_ENVIRONMENT=${RAILWAY_ENVIRONMENT:-production}" >> "$GITHUB_ENV"
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Deploy backend
+        run: >
+          railway up backend
+          --path-as-root
+          --ci
+          --project "$RAILWAY_PROJECT_ID"
+          --environment "$RAILWAY_ENVIRONMENT"
+          --service "$RAILWAY_BACKEND_SERVICE"
+
+      - name: Deploy admin
+        run: >
+          railway up admin
+          --path-as-root
+          --ci
+          --project "$RAILWAY_PROJECT_ID"
+          --environment "$RAILWAY_ENVIRONMENT"
+          --service "$RAILWAY_ADMIN_SERVICE"

@@ -66,6 +66,7 @@ flutter:
     - assets/images/motif.jpg
     - assets/branding/logo_1024.png
     - assets/branding/logo_mark.png
+    - assets/payments/telebirr_logo.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
